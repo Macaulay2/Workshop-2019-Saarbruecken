@@ -53,18 +53,19 @@ I=ideal(random(1,S),random(1,S),random(1,S))
 J=ideal(random(1,S),random(1,S),random(1,S))
 
 hadProdOfVariety(I,J)
-
+restart
 --defining a new type of objects: points
 Point = new Type of BasicList
-makePoint=method()
-makePoint(List):=(P)->(new Point from P)
-
+point=method()
+point(VisibleList):=(P)->(new Point from P)
 --example--
-makePoint {1,3,5}
+point{1,3,5}
+point (1,3,4)
+
 
 --makePoints=method()
 makePoints:=(L)->(
-             apply(L,P-> makePoint P)
+             apply(L,P-> point P)
 	     )
 ---Hadamard product of two points---
 hadProdPoints = method()	 
@@ -72,37 +73,42 @@ hadProdPoints(Point,Point):=(p,q)->(
     apply(p,q,times)
     )
 
+Point * Point:=(p,q)->(
+    apply(p,q,times)
+    )
+
+Point + Point:=(p,q)->(
+    apply(p,q,plus)
+    )
+p+q
+
+Thing * Point:=(t,p)->(
+    Np:=toList p;
+     point( t * Np)
+     )
+fold(hadProdPoints,{p,q,q})
+ 
 ---example----
-q=makePoint{1,2,3}
-p=makePoint{1,3,2}
+q=point{1,2,3}
+p=point{1,3,2}
 hadProdPoints(p,q)
 
-
 --Hadmard product of two subsets of points on two varieties
-hadProdSetOfPoints = method();
-hadProdSetOfPoints(VisibleList,VisibleList) :=(X,Y)->(
-     newX:= makePoints X ;
-     newY:= makePoints Y;
-   apply(newX,a->apply(newY,b->hadProdPoints(a,b)))
-    )
 
+X={{2,3,4},{1,2,3},p,q,(1,2,3)}
+hadProdSetOfPoints = method();
+hadProdSetOfPoints(List,List) :=(X,Y)->(
+     convert:= obj -> if not instance(obj, Point) then point(obj) else obj;
+     X=apply(X,convert);
+     Y=apply(Y,convert) ; 
+     apply(newX,a->apply(newY,b->hadProdPoints(a,b)))
+    )
 ---example ----
-M={{1,3,6}}
-N={{1,0,1},{0,1,1}}
+X={{1,3,6},{4,5,6}}
+Y={{1,0,1},{0,1,1}}
 hadProdSetOfPoints(M,N)
 
----Hadamard powers
-hadPowers = method();
-hadPowers(Ideal,ZZ):=(I,r)->(    
-   NewI = I;
-   for i from 1 to r-1 do NewI = hadProdOfVariety(NewI,I);
-   return NewI
-    )
 
---example ---
-I=ideal(random(1,S),random(1,S),random(1,S))
-hadPowers(I,3)
-----
 
 ---Hadamard product of matrices---
 pointsToMatrix = PTM -> matrix apply(PTM, toList)
@@ -116,12 +122,50 @@ hadProdMatrix(Matrix,Matrix):=(M,N)->(
     )
 
 --example---
-M=random(QQ^4,QQ^4)
+M=random(ZZ^2,ZZ^2)
 N=random(QQ^4,QQ^4)
 loadPackage "Points"
 M=transpose randomPointsMat(R,4)
 N=transpose randomPointsMat(R,4)
 hadProdMatrix(M,N)
+
+-----------------------------$$$$$------------
+
+---Hadamard powers of varieties------------
+hadPowers = method();
+hadPowers(Ideal,ZZ):=(I,r)->(
+   NewI = I;
+   for i from 1 to r-1 do NewI = hadProdOfVariety(NewI,I);
+   return NewI)
+
+---Hadamard powers of Matrix------------
+hadPowers(Matrix,ZZ):=(M,r)->(
+   NewM = M;
+   for i from 1 to r-1 do NewM = hadProdMatrix(NewM,M);
+   return NewM)
+
+--example---
+hadPowers(M,2)
+---Hadamard powers of sets of points ------------
+hadPowers(List,ZZ):=(L,r)->(
+   NewL = L;
+   for i from 1 to r-1 do NewL = hadProdSetOfPoints(NewL,L);
+   return NewL)
+
+
+
+select(U, List)
+
+
+
+
+--example ---
+I=(random(1,S),random(1,S),random(1,S))
+Object=I
+hadPowers(I,3)
+----
+
+
 
 
 
