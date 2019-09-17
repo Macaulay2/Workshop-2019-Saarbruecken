@@ -835,6 +835,7 @@ noethOpsFromComponents(HashTable) := List => H -> (
 -- Outputs a sequence (numerator, denominator)
 rationalInterpolation = method(Options => {Tolerance => 1e-6})
 rationalInterpolation(List, List, Matrix, Matrix) := (RingElement, RingElement) => opts -> (pts, vals, numBasis, denBasis) -> (
+    if numColumns numBasis + numColumns denBasis > #pts then error "Rational interpolation needs more points";
     R := ring numBasis_(0,0);
     nn := numColumns numBasis;
     nd := numColumns denBasis;
