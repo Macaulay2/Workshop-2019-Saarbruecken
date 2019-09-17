@@ -28,7 +28,9 @@ restart
 S=QQ[x,y,t,w]
 -- Hadamrd product of two varieties
 hadProdOfVariety = method();
-hadProdOfVariety= (I,J) -> (
+hadProdOfVariety (Ideal, Ideal):= (I,J) -> (
+    newy := symbol newy;
+    newz := symbol newz;
     varI:= gens ring I;
     varJ:= gens ring J;
     CRI:=coefficientRing ring I;
