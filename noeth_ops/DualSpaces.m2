@@ -842,7 +842,6 @@ rationalInterpolation(List, List, Matrix, Matrix) := (RingElement, RingElement) 
     M := apply(pts, vals, (pt,val) -> evaluate(numBasis, pt) | -val * evaluate(denBasis, pt));
     M = fold(M, (i,j) -> i || j);
     ker := clean(opts.Tolerance, approxKer(M, Tolerance => opts.Tolerance));
-    if numColumns ker == 0 then error "Warning: no kernel found" else if numColumns ker > 1 then print "Warning: kernel has more than one column";
     -- Normalize
     K := colReduce(ker, opts.Tolerance);
     ((numBasis * K^{0..(nn - 1)}), (denBasis * K^{nn .. (nn+nd-1)}))
