@@ -19,8 +19,10 @@ export {
     
     -- methods
     "hadProdOfVariet",
-    "hadProdOfPoints"
-    ,
+    "makePoint",
+    "hadProdPoints",
+    "hadProdSetOfPoints",
+    "hadPowers",
     -- symbols
     "dims"
     }
@@ -50,32 +52,57 @@ J=ideal(random(1,S),random(1,S),random(1,S))
 
 hadProdOfVariety(I,J)
 
+--defining a new type of objects: points
+Point = new Type of BasicList
+makePoint=method()
+makePoint(List):=(P)->(new Point from P)
 
---Hadmard product of two subset of points on a varieties
-hadProdOfPoints = method();
-hadProdOfPoints(VisibleList,VisibleList) :=(X,Y)->(    
-   toList set flatten apply(X,a->apply(Y,b->apply(a,b,(i,j)->i*j)))
+--example--
+makePoint {1,3,5}
+
+--makePoints=method()
+makePoints:=(L)->(
+             apply(L,P-> makePoint P)
+	     )
+---Hadamard product of two points---
+hadProdPoints = method()	 
+hadProdPoints(Point,Point):=(p,q)->(
+    apply(p,q,times)
     )
 
-hadProdOfPoints(X,Y)
+---example----
+q=makePoint{1,2,3}
+p=makePoint{1,3,2}
+hadProdPoints(p,q)
+
+
+--Hadmard product of two subsets of points on two varieties
+hadProdSetOfPoints = method();
+hadProdSetOfPoints(VisibleList,VisibleList) :=(X,Y)->(
+     newX:= makePoints X ;
+     newY:= makePoints Y;
+   apply(newX,a->apply(newY,b->hadProdPoints(a,b)))
+    )
 
 ---example ----
 M={{1,3,6}}
 N={{1,0,1},{0,1,1}}
-hadProdOfPoints(M,N)
+hadProdSetOfPoints(M,N)
 
----Hadamard power
-hadPower = method();
-hadPower:=(I,r)->(    
+---Hadamard powers
+hadPowers = method();
+hadPowers(Ideal,ZZ):=(I,r)->(    
    NewI = I;
    for i from 1 to r-1 do NewI = hadProdOfVariety(NewI,I);
    return NewI
     )
 
+---Hadamard
+
+
 --example ---
 I=ideal(random(1,S),random(1,S),random(1,S))
-hadPower(I,3)
-
+hadPowers(I,3)
 ----
 
 
