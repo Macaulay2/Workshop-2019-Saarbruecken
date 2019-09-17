@@ -12,7 +12,9 @@ newPackage(
     Headline => "A package on Hadamard product of varieties",
     AuxiliaryFiles => false,
     DebuggingMode => true,
-    Reload => true
+    Reload => true,
+    PackageImports => {"Points"}
+    
     )
 export {
     -- types
@@ -97,15 +99,29 @@ hadPowers(Ideal,ZZ):=(I,r)->(
    return NewI
     )
 
----Hadamard
-
-
 --example ---
 I=ideal(random(1,S),random(1,S),random(1,S))
 hadPowers(I,3)
 ----
 
+---Hadamard product of matrices---
+pointsToMatrix = PTM -> matrix apply(PTM, toList)
+hadProdMatrix=method();
+hadProdMatrix(Matrix,Matrix):=(M,N)->(
+    if (numrows M,numcols M) != (numrows N,numcols N) then (
+	return "error: two matrices should be of the same sizes");
+    rowM=makePoints entries M;
+    rowN=makePoints entries N;
+    pointsToMatrix(apply(rowM,rowN,(i,j)->hadProdPoints(i,j)))
+    )
 
+--example---
+M=random(QQ^4,QQ^4)
+N=random(QQ^4,QQ^4)
+loadPackage "Points"
+M=transpose randomPointsMat(R,4)
+N=transpose randomPointsMat(R,4)
+hadProdMatrix(M,N)
 
 
 
