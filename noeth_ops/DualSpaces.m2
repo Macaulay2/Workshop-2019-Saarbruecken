@@ -80,7 +80,9 @@ truncatedDual(Point,Matrix,ZZ) := o -> (p,Igens,d) -> (
     truncatedDual(P,Igens,d,o)
     )
 truncatedDual(Ideal,Matrix,ZZ) := o -> (P,Igens,d) -> (
-    R := ring Igens;
+    R := newRing(ring Igens, MonomialOrder => {Position => Down});
+    Igens = sub(Igens, R);
+    P = sub(P, R);
     if d < 0 then return dualSpace(map(R^1,R^0,0),origin(R));
     t := if o.Tolerance === null then defaultT(R) else o.Tolerance;
     R' := diffAlg R;
@@ -89,8 +91,11 @@ truncatedDual(Ideal,Matrix,ZZ) := o -> (P,Igens,d) -> (
     M := if o.Normalize then contract(ops,transpose polys) else diff(ops,transpose polys);
     M = sub(M,R/P);
     kern := if numgens coefficientRing R == 0 and t > 0 then (
-	colReduce(numericalKernel(M,t),t)
-	) else gens trim kernel M;
+    colReduce(numericalKernel(M,t),t)
+	) else (
+        K := kernel M;
+        gens gb kernel M
+    );
     --print(M,gens P,ops,polys,kern);
     dBasis := sub(ops,vars R')*sub(kern,R);
     dualSpace(dBasis,origin(R))
@@ -730,9 +735,12 @@ noethOps (Ideal, Ideal) := List => opts -> (I, P) -> (
     depVars := if opts.DependentSet === null then gens R - set support first independentSets P
             else opts.DependentSet;
     indVars := gens R - set depVars;
-    S := (frac((coefficientRing R)[indVars]))[depVars];
+    S' := (frac((coefficientRing R)[indVars]))[depVars];
+    II := sub(radical I, S');
+    S := (S'/II)[depVars];
+    -- S := (frac((coefficientRing R)[indVars]))[depVars];
     dS := zeroDimensionalDual(sub(P,S),sub(I,S),Normalize=>false);
-    R' := diffAlg R;
+    R' := diffAlg S;
     return flatten entries sub(gens dS,R');
 )
 noethOps (Ideal) := List => opts -> (I) -> noethOps(I, ideal gens radical I, opts)
