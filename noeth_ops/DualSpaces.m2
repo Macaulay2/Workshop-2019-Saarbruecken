@@ -14,7 +14,8 @@ newPackage(
      },
      Headline => "numerically compute local dual spaces, Hilbert functions, and Noetherian operators",
      PackageImports => {"Truncations"},
-     AuxiliaryFiles => false
+     AuxiliaryFiles => false,
+     DebuggingMode => true
 )
 
 export {
@@ -85,7 +86,7 @@ truncatedDual(Ideal,Matrix,ZZ) := o -> (P,Igens,d) -> (
     P = sub(P, R);
     if d < 0 then return dualSpace(map(R^1,R^0,0),origin(R));
     t := if o.Tolerance === null then defaultT(R) else o.Tolerance;
-    R' := diffAlg R;
+    R' := diffAlg(P,R);
     ops := basis(0,d,R);
     polys := gens idealBasis(Igens,d,false);
     M := if o.Normalize then contract(ops,transpose polys) else diff(ops,transpose polys);
@@ -698,7 +699,11 @@ diffAlg = method()
 diffAlg(Ring) := R -> (
     diffVars := apply(gens R, i -> value("symbol d" | toString(i)) );
     R[diffVars]
-    )
+)
+diffAlg(Ideal,Ring) := (P,R) -> (
+    diffVars := apply(gens R, i -> value("symbol d" | toString(i)) );
+    R/P[diffVars]
+)
 
 -- addFactorials = (f, var) -> (
 --     (coe, mon) := coefficients(f, Variables => var);
@@ -735,13 +740,13 @@ noethOps (Ideal, Ideal) := List => opts -> (I, P) -> (
     depVars := if opts.DependentSet === null then gens R - set support first independentSets P
             else opts.DependentSet;
     indVars := gens R - set depVars;
-    S' := (frac((coefficientRing R)[indVars]))[depVars];
-    II := sub(radical I, S');
-    S := (S'/II)[depVars];
+    S := (frac((coefficientRing R)[indVars]))[depVars];
+    SradI := sub(radical I, S);
+    SI := sub(I,S);
+    -- S := (S'/II)[depVars];
     -- S := (frac((coefficientRing R)[indVars]))[depVars];
-    dS := zeroDimensionalDual(sub(P,S),sub(I,S),Normalize=>false);
-    R' := diffAlg S;
-    return flatten entries sub(gens dS,R');
+    dS := zeroDimensionalDual(SradI,SI,Normalize=>false);
+    return flatten entries gens dS
 )
 noethOps (Ideal) := List => opts -> (I) -> noethOps(I, ideal gens radical I, opts)
 noethOps (Ideal, Point) := List => opts -> (I, p) -> (
