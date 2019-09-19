@@ -44,8 +44,7 @@ point{1,3,5}
 
 makeListOfPoints=method()
 makeListOfPoints:=(L)->(
-             apply(L,P-> point P)
-	     )
+             apply(L,P-> point P))
 	 
 -----example----
 makeListOfPoints(entries random(ZZ^4,ZZ^3))
@@ -53,8 +52,7 @@ makeListOfPoints(entries random(ZZ^4,ZZ^3))
 
 hadProdPoints = method()	 
 hadProdPoints(Point,Point):=(p,q)->(
-    apply(p,q,times)
-    )
+    apply(p,q,times))
 ---example----
 q=point{1,2,3}
 p=point{1,3,2}
@@ -69,10 +67,20 @@ Point + Point:=(p,q)->(
     apply(p,q,plus)
     )
 
+- Point:=(q)->(
+    point apply(toList q,minus)
+    )
+
+
+Point / Thing:=(q,t)->(
+    point apply(toList q,i->i/t)
+    )
+
 Thing * Point:=(t,p)->(
     Np:=toList p;
      point( t * Np)
      )
+
 Point * Thing :=(p,t)->(
     Np:=toList p;
      point(flatten apply(Np,i->apply({t},{i},times)))
@@ -80,7 +88,7 @@ Point * Thing :=(p,t)->(
 
 -----group action----
 
-S=QQ[x,y,z,w]
+--S=QQ[x,y,z,w]
 -- Hadamrd product of two varieties
 hadProdOfVariety = method();
 hadProdOfVariety (Ideal, Ideal):= (I,J) -> (
@@ -151,8 +159,8 @@ hadProdMatrix=method();
 hadProdMatrix(Matrix,Matrix):=(M,N)->(
     if (numrows M,numcols M) != (numrows N,numcols N) then (
 	return "error: two matrices should be of the same sizes");
-    rowM=makePoints entries M;
-    rowN=makePoints entries N;
+    rowM=makeListOfPoints entries M;
+    rowN=makeListOfPoints entries N;
     pointsToMatrix(apply(rowM,rowN,(i,j)->hadProdPoints(i,j)))
     )
 
@@ -174,7 +182,7 @@ hadPowers(Ideal,ZZ):=(I,r)->(
    return NewI)
 
 ----example--
-I=(random(1,S),random(1,S),random(1,S))
+I=ideal(random(1,S),random(1,S),random(1,S))
 hadPowers(I,3)
 ---Hadamard powers of Matrix------------
 hadPowers(Matrix,ZZ):=(M,r)->(
@@ -183,6 +191,7 @@ hadPowers(Matrix,ZZ):=(M,r)->(
    return NewM)
 
 --example---
+M=random(ZZ^4,ZZ^4)
 hadPowers(M,2)
 ---Hadamard powers of sets of points ------------
 
@@ -190,6 +199,7 @@ hadPowers(List,ZZ):=(L,r)->(
    NewL = L;
    for i from 1 to r-1 do NewL = hadProdSetsOfPoints(NewL,L);
    return NewL)
+
 ---example---
 Y={{1,0,1},{0,1,1}}
 hadPowers(Y,2)
@@ -228,6 +238,7 @@ hadMult({point{0,4,5,6},point{1,2,3,4}})
 
 
 
+-----------------------new results-----------------
 
 
 
@@ -237,8 +248,13 @@ hadMult({point{0,4,5,6},point{1,2,3,4}})
 
 
 
-	  
-O=3
-j=4
-if O==3 then( if O+1==4 then(if j == 4 then O else "d" ) else "d" ) else "d"
+
+
+
+
+
+
+
+
+
 restart
