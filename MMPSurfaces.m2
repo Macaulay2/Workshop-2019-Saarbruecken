@@ -17,7 +17,7 @@ newPackage(
 	    Email => "blug@math.uni-sb.de"
 	},
     },
-    Headline => "Study of smooth surfaces via the adjunction map",
+    Headline => "Birational classification of smooth surfaces",
     DebuggingMode => false
 )
 
@@ -184,12 +184,13 @@ invariants (Ideal) := (X) ->
 
 
 
--- computes the exceptional locus of the adjunction map
+-- computes the exceptional locus of the adjunction map (works only for surfaces in P^4)
 
 exceptLocus = method();
 exceptLocus (Ideal) := (X) ->
 (
     R := ring X;
+    if dim R != 5 then error "expected surface in P^4";
     RX := R/X;
     H1 := sub(ideal(random(1,R))+X,RX);
     H2 := sub(ideal(random(1,R))+X,RX);
