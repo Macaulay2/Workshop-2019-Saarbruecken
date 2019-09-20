@@ -713,7 +713,7 @@ doc ///
 	    SX = S/X;
 	    phi = adjunctionMap(X)
 	    d = dimensionOfTargetSpace(X)
-	    d == dim source phi
+	    d == (dim source phi - 1)
     Caveat
         This method only works for surfaces.
     	This method uses the package Divisor.
