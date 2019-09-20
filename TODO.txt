@@ -5,3 +5,5 @@
 - implement fast canonical sheaf computations
 
 - implement construction methods of curves in P4
+
+- improve dimension of target space (calculate via sectional genus )
