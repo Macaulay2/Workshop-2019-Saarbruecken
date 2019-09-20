@@ -1,0 +1,7 @@
+- improve classification (e.g identify different rational surfaces, count the number of (-1) lines etc)
+
+- speed up computations of kodaira dimension
+
+- implement fast canonical sheaf computations
+
+- implement construction methods of curves in P4
