@@ -1,6 +1,6 @@
 newPackage(
-    "Hadmard",
-    Version => "0.1",
+    "Hadamard",
+    Version => "1.0",
     Date => "September 2019",
     Authors => {
 
@@ -9,7 +9,7 @@ newPackage(
 	    HomePage => "http://calvino.polito.it/~imanbj"
 	    }
 	}, -- TODO
-    Headline => "A package on Hadamard product of varieties",
+    Headline => "A package for Hadamard product and Minkowski sums of varieties",
     AuxiliaryFiles => false,
     DebuggingMode => true,
     Reload => true,
@@ -20,45 +20,30 @@ export {
     -- types
     
     -- methods
-    "hadProdOfVariet",
     "point",
-    "hadProdPoints",
-    "hadProdSetsOfPoints",
-    "hadPowers",
-    "hadMult",
-    "minkowskiSum",
-    "makeListOfPoints"
-    -- symbols
-    " "
+    "makeListOfPoints",
+    "pointsToMatrix",
+    "hadamardPowers",
+    "hadamardMult",
+    "hadamardProduct",
+    "minkSumPowers",
+    "minkSum",
+    "minkMult"
     }
-restart
 
 
 --defining a new type of objects: points
+
 Point = new Type of BasicList
 point=method()
 point(VisibleList):=(P)->(new Point from P)
---example--
-point{1,3,5}
 
 
 makeListOfPoints=method()
-makeListOfPoints:=(L)->(
-             apply(L,P-> point P))
-	 
------example----
-makeListOfPoints(entries random(ZZ^4,ZZ^3))
----Hadamard product of two points---
+makeListOfPoints(VisibleList):=(L)->(
+             apply(L,P-> point P)
+	     )
 
-hadProdPoints = method()	 
-hadProdPoints(Point,Point):=(p,q)->(
-    apply(p,q,times))
----example----
-q=point{1,2,3}
-p=point{1,3,2}
-hadProdPoints(p,q)
-
------group action----
 Point * Point:=(p,q)->(
     apply(p,q,times)
     )
@@ -71,6 +56,9 @@ Point + Point:=(p,q)->(
     point apply(toList q,minus)
     )
 
+Point - Point :=(p,q)->(
+    p+(-q)
+    )
 
 Point / Thing:=(q,t)->(
     point apply(toList q,i->i/t)
@@ -86,11 +74,25 @@ Point * Thing :=(p,t)->(
      point(flatten apply(Np,i->apply({t},{i},times)))
      )
 
------group action----
+---Hadamard product of two points---
 
---S=QQ[x,y,z,w]
+
+hadProdPoints = method()	 
+hadProdPoints(Point,Point):=(p,q)->(
+    apply(p,q,times)
+    )
+
+hadProdPoints(List,List):=(p,q)->(
+    apply(point p,point q,times)
+    )
+
+hadProdPoints(Array,Array):=(p,q)->(
+    apply(point p,point q,times)
+    )
+
+
 -- Hadamrd product of two varieties
-hadProdOfVariety = method();
+hadProdOfVariety = method()
 hadProdOfVariety (Ideal, Ideal):= (I,J) -> (
     newy := symbol newy;
     newz := symbol newz;
@@ -100,19 +102,98 @@ hadProdOfVariety (Ideal, Ideal):= (I,J) -> (
     CRJ:=coefficientRing ring J;
     RYI:=CRI[newy_0.. newy_(# varI -1)];
     RZJ:=CRI[newz_0..newz_(# varJ -1)];
-    IY=sub(I,apply(varI,gens RYI,(a,b)->a=>b));
-    JZ=sub(J,apply(varJ,gens RZJ,(a,b)->a=>b));
-    TensorRingIJ=RYI/IY ** RZJ/JZ;
-    Projvars:=apply(# gens S,i->newy_i * newz_i);
-    hadMap:=map(TensorRingIJ,S, Projvars);
-    ker hadMap)
-------example------------
-I=ideal(x,y,z^2+w^2)
-J=ideal(w^2+x^2,z)
-hadProdOfVariety(I,J)
----------- Minkowski sum of two varieties---------
-minkowskiSum = method();
-minkowskiSum(Ideal, Ideal):= (I,J) -> (
+    IY:=sub(I,apply(varI,gens RYI,(a,b)->a=>b));
+    JZ:=sub(J,apply(varJ,gens RZJ,(a,b)->a=>b));
+    TensorRingIJ:=RYI/IY ** RZJ/JZ;
+    Projvars:=apply(# gens ring I,i->newy_i * newz_i);
+    hadMap:=map(TensorRingIJ,ring I, Projvars);
+    ker hadMap
+    )
+ 
+
+-------Hadmard product of two subsets of points on two varieties---------
+hadProdListsOfPoints = method()
+hadProdListsOfPoints(List,List) :=(X,Y)->(
+     convert:= obj -> if not instance(obj, Point) then point(obj) else obj;
+     newX:=apply(X,convert);
+     newY:=apply(Y,convert); 
+     toList set flatten apply(newX,a->apply(newY,b->a*b))
+     )
+
+
+
+---Hadamard product of matrices---
+
+pointsToMatrix=method()
+pointsToMatrix(List):= (PTM) ->( matrix apply(PTM, toList))
+
+hadamardProductMatrix=method()
+hadamardProductMatrix(Matrix,Matrix):=(M,N)->(
+    if (numrows M,numcols M) != (numrows N,numcols N) then (
+	return "error: two matrices should be of the same sizes");
+    rowM:=makeListOfPoints entries M;
+    rowN:=makeListOfPoints entries N;
+    pointsToMatrix(apply(rowM,rowN,(i,j)->hadProdPoints(i,j))) 
+    )
+
+
+
+---Hadamard powers of varieties------------
+
+hadamardPowers = method()
+hadamardPowers(Ideal,ZZ):=(I,r)->(
+   NewI := I;
+   for i from 1 to r-1 do NewI = hadProdOfVariety(NewI,I);
+   return NewI)
+
+
+---Hadamard powers of Matrix------------
+hadamardPowers(Matrix,ZZ):=(M,r)->(
+   NewM := M;
+   for i from 1 to r-1 do NewM = hadamardProductMatrix(NewM,M);
+   return NewM)
+
+
+---Hadamard powers of sets of points ------------
+
+hadamardPowers(List,ZZ):=(L,r)->(
+   NewL := L;
+   for i from 1 to r-1 do NewL = hadProdListsOfPoints(NewL,L);
+   return toList set NewL)
+
+
+-----------------%%%--------------------------------%%%---------------
+
+hadamardMult=method()
+hadamardMult(List):=(L)->(
+    if not uniform L then
+     (return "error: the elements of the list are not all of the same class");
+    if instance(first L,Ideal)==true then fold(hadProdOfVariety,L)
+    else
+    if instance(first L,List)==true or instance(first L,Point)==true then fold(hadProdPoints,L)
+    else
+    if instance(first L,Matrix)==true then fold(hadamardProductMatrix,L)
+    else return ("error: check the inputs")
+    )
+
+
+-------general product------
+
+hadamardProduct=method()
+hadamardProduct(Ideal,Ideal):=(I,J)->(hadProdOfVariety(I,J))
+hadamardProduct(List,List):=(X,Y)->(hadProdListsOfPoints(X,Y))
+hadamardProduct(Matrix,Matrix):=(M,N)->(hadamardProductMatrix(M,N))
+
+
+
+
+------------------Hadamard product ends ------------------
+
+
+---------- Minkowski sum of two varieties starts---------
+
+minkowskiSumOfVariety = method()
+minkowskiSumOfVariety(Ideal, Ideal):= (I,J) -> (
     newy := symbol newy;
     newz := symbol newz;
     varI:= gens ring I;
@@ -121,124 +202,105 @@ minkowskiSum(Ideal, Ideal):= (I,J) -> (
     CRJ:=coefficientRing ring J;
     RYI:=CRI[newy_0.. newy_(# varI -1)];
     RZJ:=CRI[newz_0..newz_(# varJ -1)];
-    IY=sub(I,apply(varI,gens RYI,(a,b)->a=>b));
-    JZ=sub(J,apply(varJ,gens RZJ,(a,b)->a=>b));
-    TensorRingIJ=RYI/IY ** RZJ/JZ;
-    Minkvars:=apply(#gens S,i-> -newy_i - newz_i);
-    MinkMap:=map(TensorRingIJ,S,Minkvars);
-    ker MinkMap)
+    IY:=sub(I,apply(varI,gens RYI,(a,b)->a=>b));
+    JZ:=sub(J,apply(varJ,gens RZJ,(a,b)->a=>b));
+    TensorRingIJ:=RYI/IY ** RZJ/JZ;
+    Minkvars:=apply(#gens ring I,i-> newy_i + newz_i);
+    MinkMap:=map(TensorRingIJ,ring I,Minkvars);
+    ker MinkMap
+    )
 
-----------example--------
-I=ideal(x,y,z^2+w^2)
-J=ideal(w^2+x^2,z)
-minkowskiSum(I,J)
 
-restart
+minkSumPoints = method()     
+minkSumPoints(Point,Point):=(p,q)->(p + q)
+minkSumPoints(List,List):=(p,q)->(point p + point q)
+minkSumPoints(Array,Array):=(p,q)->(point p + point q)
 
---examples ----
 
- 
-
--------Hadmard product of two subsets of points on two varieties---------
-hadProdSetsOfPoints = method();
-hadProdSetsOfPoints(List,List) :=(X,Y)->(
+minkSumListsOfPoints = method();
+minkSumListsOfPoints(List,List) :=(X,Y)->(
      convert:= obj -> if not instance(obj, Point) then point(obj) else obj;
      newX:=apply(X,convert);
      newY:=apply(Y,convert); 
-     flatten apply(newX,a->apply(newY,b->a*b))
-    )
----example ----
-M={{1,3,6},{4,5,6}}
-N={{1,0,1},{0,1,1}}
-hadProdSetsOfPoints(M,N)
+     toList set flatten apply(newX,a->apply(newY,b->a+b))
+     )
 
 
----Hadamard product of matrices---
-pointsToMatrix = PTM -> matrix apply(PTM, toList)
-hadProdMatrix=method();
-hadProdMatrix(Matrix,Matrix):=(M,N)->(
-    if (numrows M,numcols M) != (numrows N,numcols N) then (
-	return "error: two matrices should be of the same sizes");
-    rowM=makeListOfPoints entries M;
-    rowN=makeListOfPoints entries N;
-    pointsToMatrix(apply(rowM,rowN,(i,j)->hadProdPoints(i,j)))
-    )
+---Mink powers of varieties------------
+minkSumPowers = method()
+minkSumPowers(Ideal,ZZ):=(I,r)->(
+   NewI := I; 
+   for i from 1 to r-1 do NewI = minkowskiSumOfVariety(NewI,I);
+   return NewI
+   )
 
---example---
-M=random(ZZ^4,ZZ^4)
-N=random(QQ^4,QQ^4)
-loadPackage "Points"
-M=transpose randomPointsMat(R,4)
-N=transpose randomPointsMat(R,4)
-hadProdMatrix(M,N)
 
------------------------------$$$$$------------
+---Hadamard powers of list of points ------------
 
----Hadamard powers of varieties------------
-hadPowers = method();
-hadPowers(Ideal,ZZ):=(I,r)->(
-   NewI = I;
-   for i from 1 to r-1 do NewI = hadProdOfVariety(NewI,I);
-   return NewI)
+minkSumPowers(List,ZZ):=(L,r)->(
+   NewL := L;
+   for i from 1 to r-1 do NewL = minkSumListsOfPoints(NewL,L);
+   return toList set NewL
+   )
 
-----example--
-I=ideal(random(1,S),random(1,S),random(1,S))
-hadPowers(I,3)
----Hadamard powers of Matrix------------
-hadPowers(Matrix,ZZ):=(M,r)->(
-   NewM = M;
-   for i from 1 to r-1 do NewM = hadProdMatrix(NewM,M);
-   return NewM)
 
---example---
-M=random(ZZ^4,ZZ^4)
-hadPowers(M,2)
----Hadamard powers of sets of points ------------
 
-hadPowers(List,ZZ):=(L,r)->(
-   NewL = L;
-   for i from 1 to r-1 do NewL = hadProdSetsOfPoints(NewL,L);
-   return NewL)
+minkSum=method()
+minkSum(Ideal,Ideal):=(I,J)->(minkowskiSumOfVariety(I,J))
+minkSum(List,List):=(X,Y)->(minkSumListsOfPoints(X,Y))
+minkSum(Matrix,Matrix):=(M,N)->(M+N)
 
----example---
-Y={{1,0,1},{0,1,1}}
-hadPowers(Y,2)
------
-----Hadamard product of set of the same Type elements in side a list--
------------------%%%---------------
-hadMultVars:=(L)->(fold(hadProdOfVariety,L))
+
 -----------------%%%--------------------------------%%%---------------
-hadMultListInList:=(L)->(
-convert:= obj -> if not instance(obj, Point) then point(obj) else obj;
-	newL:=apply(L,convert);
-	  fold(hadProdPoints,newL))
------------------%%%--------------------------------%%%---------------
-hadMultPointsInList:=(L)->(fold(hadProdPoints,L))
------------------%%%--------------------------------%%%---------------
-hadMultMatsInList:=(L)->(fold(hadProdMatrix,L))
------------------%%%--------------------------------%%%---------------
-hadMult=method();
-hadMult(List):=(L)->(
+
+minkMult=method()
+minkMult(List):=(L)->(
     if not uniform L then
      (return "error: the elements of the list are not all of the same class");
-    if instance(first L,Ideal)==true then hadMultVars(L)
+    if instance(first L,Ideal)==true then fold(minkowskiSumOfVariety,L)
     else
-    if instance(first L,List)==true then hadMultListInList(L)
+    if instance(first L,List)==true or instance(first L,Point)==true or instance(first L,Array)==true
+    then fold(minkSumPoints,L)
     else
-    if  instance(first L,Point)==true then hadMultPointsInList(L)
-    else 
-    if instance(first L,Matrix)==true then hadMultMatsInList(L)
+    if instance(first L,Matrix)==true then sum L
     else return ("error: check the inputs")
     )
------------example-----------
-hadMult({I,I,I})
-hadMult({{0,4,5,6},{1,2,3,4}})
-hadMult({random(ZZ^3,ZZ^4),random(ZZ^3,ZZ^4)})
-hadMult({point{0,4,5,6},point{1,2,3,4}})
+
+-------------minkowskiSum--ends-------
+
+-----------------------new results-------------
+
+beginDocumentation()
+
+     doc ///
+      Key 
+        Hadamard
+     Headline
+      A package for Hadamard product and Minkowski sums of varieties
+     Description
+       Text
+        We know what we are doing here!
+       Example
+        hadamardProduct({point{1,2,3,4}},{point{1,2,3,4}})
+     SeeAlso
+      
+     ///
+
+
+     TEST ///
+     assert(hadamardProduct({point{1,2,3,4}},{point{1,2,3,4}}))==point{1,4,9,16})
+ 
+     -- may have as many TEST sections as needed
+     ///
+  
+     
+end
+
+installPackage "Hadamard"
+viewHelp Hadamard
 
 
 
------------------------new results-----------------
 
 
 
@@ -255,6 +317,3 @@ hadMult({point{0,4,5,6},point{1,2,3,4}})
 
 
 
-
-
-restart
