@@ -22,7 +22,8 @@ newPackage(
 )
 
 export{
-    "getGenus", 
+    "geoGenus", 
+    "secGenus",
     "irregularity", 
     "intersectionNumber", 
     "eulerNumber", 
@@ -32,8 +33,8 @@ export{
     "imageUnderAdjunctionMap", 
     "exceptLocus", 
     "kodairaDimension",
-    "kodairaInvariants",
-    "kodairaProbabilistic", 
+    "kodairaFast",
+    "kodairaSlow", 
     "classifyKodairaNeg",
     "classifyKodaira0", 
     "classifyKodaira1",
@@ -43,8 +44,8 @@ export{
 }
 
 undocumented{
-    "kodairaInvariants",
-    "kodairaProbabilistic", 
+    "kodairaFast",
+    "kodairaSlow",
     "classifyKodairaNeg",
     "classifyKodaira0", 
     "classifyKodaira1",
@@ -72,8 +73,8 @@ needsPackage "Cremona"
 
 -- computes the geometric genus of X
 
-getGenus = method();
-getGenus (Ideal) := (X) ->
+geoGenus = method();
+geoGenus (Ideal) := (X) ->
 (
     if pdim (betti res X) == 2 then (
     	S := ring X;
@@ -89,6 +90,17 @@ getGenus (Ideal) := (X) ->
     omegaX := sheaf omegaX0;
     rank HH^0(omegaX)
 );
+
+
+
+-- computes the sectional genus of X
+
+secGenus = method();
+secGenus (Ideal) := (X) ->
+(
+    R := ring X;
+    genus (ideal random(1, R) + X)
+)
 
 
 
@@ -115,9 +127,9 @@ intersectionNumber (Ideal) := (X) ->
     if dim ring X == 5 and dim X == 3 then (
     	d := degree X;
     	q := irregularity(X);
-    	g := getGenus(X);
+    	g := geoGenus(X);
     	e := 1 - q + g;
-    	p := dimensionOfTargetSpace(X)+1 + q - g;
+    	p := genus (ideal random(1, R) + X);
     	return lift(6*e+1/2*(d^2-5*d-10*(p-1)),ZZ)
      ) else (
 	  OX0 := R^1/X;
@@ -137,7 +149,7 @@ eulerNumber = method();
 eulerNumber (Ideal) := (X) ->
 (
     if dim X != 3 then error "expected surface";
-    12*(1 - irregularity(X) + getGenus(X)) - intersectionNumber(X)
+    12*(1 - irregularity(X) + geoGenus(X)) - intersectionNumber(X)
 );
 
 
@@ -148,35 +160,18 @@ invariants = method();
 invariants (Ideal) := (X) ->
 (
     if dim X != 3 then error "expected surface";
-    if pdim (betti res X) == 2 then (
-    	R := ring X;
-    	q := irregularity(X);
-    	g := getGenus X;
-    	k := intersectionNumber X;
-    	p := dimensionOfTargetSpace(X)+1 + q - g;
-    	e := eulerNumber X;
-	print("Genus = "|toString(g));
-    	print ("Irregularity = "|toString(q));	
-	print("KK^2 = "|toString(k));
-	print("Sectional genus = "|toString(p));
-	print("Topological euler number = "|toString(e));
-    	return (g,q,k,p,e)
-     )  else (
-	R = ring X;
-	d := degree X;
-    	q = irregularity(X);
-    	g = getGenus X;
-	dimX := dimensionOfTargetSpace(X)+1;
-	p = dimX + q - g;
-	k = lift(6*(1-q+g)+1/2*(d^2-5*d-10*(p-1)),ZZ);
-	e = 12*(1 - q + g) - k;
-	print("Genus = "|toString(g));
-	print ("Irregularity = "|toString(q));
-	print("KK^2 = "|toString(k));
-	print("Sectional genus = "|toString(p));
-	print("Topological euler number = "|toString(e));
-	return (g,q,k,p,e)
-	);
+    R := ring X;
+    q := irregularity(X);
+    g := geoGenus X;
+    k := intersectionNumber X;
+    p := secGenus X;
+    e := eulerNumber X;
+    print("Genus = "|toString(g));
+    print ("Irregularity = "|toString(q));	
+    print("KK^2 = "|toString(k));
+    print("Sectional genus = "|toString(p));
+    print("Topological euler number = "|toString(e));
+    return (g,q,k,p,e); 
 );
 
 
@@ -276,46 +271,37 @@ exceptLocus (Ideal) := (X) ->
 
 
 
--- attempt to compute the Kodaira dimension using a probabilistic method
+-- attempt to compute the Kodaira dimension using a slow method
 
-kodairaProbabilistic = method();
-kodairaProbabilistic (Ideal) := (X) ->
+kodairaSlow = method();
+kodairaSlow (Ideal) := (X) ->
 (
     R := ring X;
     RX := R/X;
     KX := canonicalDivisor (RX, IsGraded => true);
-    test :=
-    i := 1;
-    d := 0;
-    Degs := while (i < 6) list (d) do
-    (
-	phi := mapToProjectiveSpace(i*KX);
-	d = dim kernel phi;
-	if d == 3 then return 2;
-	if d == 2 then if intersectionNumber(X) > 0 then return 2 else return -54;
-	i = i+1;
-    );
-    if sum Degs == 0 
-    then (
-	print("Kodaira dimension is likely -1. If it is, then");
-	return -1;
-    )
-    else if (Degs_2 >= 2) and (Degs_3 >= 2) then (
-	print("Kodaira dimension is likely 0. If it is, then");
-    	return 0;
-    );
+    if dim kernel mapToProjectiveSpace(KX) == 3 then return 2;
+    phi4 := mapToProjectiveSpace(4*KX);
+    d := dim kernel phi4;
+    if d == 3 then return 2;
+    if d == 2 then return 1;
+    n4 := dim source phi4;
+    if n4 >= 1 then return 0;
+    omegaX0 := Ext^(codim X) (R^1/X, R^{-dim R});
+    omegaX := sheaf omegaX0;
+    n3 := rank HH^0(omegaX^**3);
+    if n3 >= 1 then return 0 else return -1;
 );
 
 
 
--- attempt to compute the Kodaira dimension using invariants (only for surfaces
+-- attempt to compute the Kodaira dimension using invariants (only for surfaces)
 
-kodairaInvariants = method();
-kodairaInvariants (Ideal) := (X) ->
+kodairaFast = method();
+kodairaFast (Ideal) := (X) ->
 (
     R := ring X;
     RX := R/X;
-    g := getGenus X;
+    g := geoGenus X;
     KK := intersectionNumber X;
     if (g >= 2) and (KK > 0) then return 2;
     OX0 := R^1/X;
@@ -336,9 +322,9 @@ kodairaDimension = method();
 kodairaDimension (Ideal) := (X) ->
 (
     if dim X != 3 then error "expected surface";
-    d0 := kodairaInvariants X;
+    d0 := kodairaFast X;
     if d0 == -1 or d0 == 2 then return d0;
-    kodairaProbabilistic X
+    kodairaSlow X
 );
 
 
@@ -362,7 +348,7 @@ classifyKodaira0 (Ideal) := (X) ->
 (
     KK := intersectionNumber X;
     q := irregularity X;
-    g := getGenus X;
+    g := geoGenus X;
     if (q,g) == (0,1) then if KK != 0 then print("The surface is a non minimal K3-surface") else print("The surface is a minimal K3-surface");
     if (q,g) == (2,1) then if KK != 0 then print("The surface is a non minimal abelian surface") else print("The surface is a minimal abelian surface");
     if (q,g) == (0,0) then if KK != 0 then print("The surface is a non minimal Enriques surface") else print("The surface is a minimal Enriques surface");
@@ -443,7 +429,9 @@ classify (Ideal) := (X) ->
 
 
 
---end
+
+
+
 
 
 beginDocumentation()
@@ -451,9 +439,11 @@ beginDocumentation()
 document{
     Key => MMPSurfaces,
     Headline => "Birational classification of smooth surfaces.",
+    "TODO: Put something here",
     PARA{},
     SUBSECTION "",
-    UL{	TO getGenus,
+    UL{	TO geoGenus,
+	TO secGenus,
 	TO irregularity,
 	TO intersectionNumber,
 	TO eulerNumber,
@@ -471,12 +461,12 @@ document{
 
 doc ///
     Key
-        getGenus
-        (getGenus, Ideal)    
+        geoGenus
+        (geoGenus, Ideal)    
     Headline
         Computes the geometric genus.
     Usage
-        g = getGenus(X)
+        g = geoGenus(X)
     Inputs
         X: Ideal
            the ideal of a smooth variety.
@@ -491,8 +481,44 @@ doc ///
 	    S = kk[x_0 .. x_4];
 	    M = random(S^{2:0}, S^{2:-1,1:-4});
 	    X = minors(2, M);
-	    getGenus(X)
+	    geoGenus(X)
     SeeAlso
+    	secGenus
+        irregularity
+    	intersectionNumber
+    	eulerNumber
+    	invariants
+///
+
+
+
+
+
+doc ///
+    Key
+        secGenus
+        (secGenus, Ideal)    
+    Headline
+        Computes the sectional genus.
+    Usage
+        p = secGenus(X)
+    Inputs
+        X: Ideal
+           the ideal of a smooth variety.
+    Outputs
+        p: ZZ
+    	   the sectional genus of the variety.
+    Description
+        Text
+    	    The sectional genus of a smooth variety X is the genus of a smooth hyperplane section of X. This method computes the sectional genus
+        Example
+    	    kk = ZZ/nextPrime(10000);
+	    S = kk[x_0 .. x_4];
+	    M = random(S^{2:0}, S^{2:-1,1:-4});
+	    X = minors(2, M);
+	    secGenus(X)
+    SeeAlso
+    	secGenus
         irregularity
     	intersectionNumber
     	eulerNumber
@@ -527,7 +553,8 @@ doc ///
 	    X = minors(2, M);
 	    irregularity(X)
     SeeAlso
-        getGenus
+        geoGenus
+	secGenus
     	intersectionNumber
     	eulerNumber
     	invariants
@@ -561,7 +588,8 @@ doc ///
 	    X = minors(2, M);
 	    intersectionNumber(X)
     SeeAlso
-        getGenus
+        geoGenus
+	secGenus
     	irregularity
     	eulerNumber
     	invariants
@@ -597,7 +625,8 @@ doc ///
     Caveat
         This method only works for surfaces.
     SeeAlso
-        getGenus
+        geoGenus
+	secGenus
     	irregularity
     	intersectionNumber
     	invariants
@@ -637,11 +666,13 @@ doc ///
 	    S = kk[x_0 .. x_4];
 	    M = random(S^{2:0}, S^{2:-1,1:-4});
 	    X = minors(2, M);
-	    invariants(X)
+	    (g,q,k,p,e) = invariants(X);
+	    (g,q,k,p,e) == (geoGenus(X), irregularity(X), intersectionNumber(X), secGenus(X), eulerNumber(X))
     Caveat
         This method only works for surfaces.
     SeeAlso
-        getGenus
+        geoGenus
+	secGenus
     	irregularity
     	intersectionNumber
     	eulerNumber
@@ -704,7 +735,7 @@ doc ///
     	   the dimension of the target space of the adjunction map
     Description
         Text
-    	    Let X be a smooth surface. The adjunction map maps X into some projective space. This function calculates the dimension of this space.
+    	    Let X be a smooth surface. The adjunction map maps X into some projective space. This method calculates the dimension of this space.
         Example
     	    kk = ZZ/nextPrime(10000);
 	    S = kk[x_0 .. x_4];
@@ -743,7 +774,7 @@ doc ///
     	    the ideal corresponding to the image of X under the adjunction map.
     Description
         Text
-    	    Let X be a smooth surface, K its canonical divisor and H its hyperplane divisor. Then, the adjunction map is the map given by the linear system |K+H|. This function computes the image of X under this map.
+    	    Let X be a smooth surface, K its canonical divisor and H its hyperplane divisor. Then, the adjunction map is the map given by the linear system |K+H|. This method computes the image of X under this map.
         Example
     	    kk = ZZ/nextPrime(10000);
 	    S = kk[x_0 .. x_4];
@@ -779,7 +810,7 @@ doc ///
     	   the ideal corresponding to the exceptional locus of the adjunction map.
     Description
         Text
-    	    Let X be a smooth surface. Unless X belongs to an exceptional class, the adjunctin map will be a birational map between X and its image. This function computes the exceptional locus of this map.
+    	    Let X be a smooth surface. Unless X belongs to an exceptional class, the adjunctin map will be a birational map between X and its image. This method computes the exceptional locus of this map.
         Example
     	    kk = ZZ/nextPrime(10000);
 	    S = kk[x_0 .. x_4];
@@ -817,7 +848,7 @@ doc ///
     	       the Kodaira dimension of X.
     Description
         Text
-    	    Let X be a smooth surface, K its canonical divisor. The Kodaira dimension is given by kappa = max \{dim image |dK|\}, d \geq 1. This function computes the Kodaira dimension.
+    	    Let X be a smooth surface, K its canonical divisor. The Kodaira dimension is given by kappa = max \{dim image |dK|\}, d \geq 1. This method computes the Kodaira dimension.
         Example
     	    kk = ZZ/nextPrime(10000);
 	    S = kk[x_0 .. x_4];
@@ -828,7 +859,6 @@ doc ///
         This method only works for surfaces.
     	This method uses the package Divisor.
     	This method uses the package Cremona.
-    	This method is only probabilistic and work in progress.
     SeeAlso
         classify
 ///
@@ -850,7 +880,7 @@ doc ///
            the ideal of a smooth surface.
     Description
         Text
-    	    Let X be a smooth surface. The function tries to identify the minimal model of X using the Kodaira classification and adjunction theory.
+    	    Let X be a smooth surface. The method tries to identify the minimal model of X using the Kodaira classification and adjunction theory.
         Example
     	    kk = ZZ/nextPrime(10000);
 	    S = kk[x_0 .. x_4];
@@ -861,7 +891,6 @@ doc ///
         This method only works for surfaces.
     	This method uses the package Divisor.
     	This method uses the package Cremona.
-    	This method is only probabilistic and work in progress.
     SeeAlso
         kodairaDimension
 ///
