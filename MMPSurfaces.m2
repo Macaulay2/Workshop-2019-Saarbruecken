@@ -504,10 +504,10 @@ doc ///
         p = secGenus(X)
     Inputs
         X: Ideal
-           the ideal of a smooth curve.
+           the ideal of a smooth surface.
     Outputs
         p: ZZ
-    	   the sectional genus of the variety.
+    	   the sectional genus of the surface.
     Description
         Text
     	    The sectional genus of a smooth surface X is the genus of a smooth hyperplane section of X. This method computes the sectional genus.
