@@ -13,7 +13,8 @@ newPackage(
     AuxiliaryFiles => false,
     DebuggingMode => true,
     Reload => true,
-    PackageImports => {"Points"}
+    PackageImports => {"Points"},
+    PackageExports => {"Points"}
     
     )
 export {
@@ -28,7 +29,8 @@ export {
     "hadamardProduct",
     "minkSumPowers",
     "minkSum",
-    "minkMult"
+    "minkMult",
+    "idealOfProjectivePoints"
     }
 
 
@@ -105,7 +107,8 @@ hadProdOfVariety (Ideal, Ideal):= (I,J) -> (
     IY:=sub(I,apply(varI,gens RYI,(a,b)->a=>b));
     JZ:=sub(J,apply(varJ,gens RZJ,(a,b)->a=>b));
     TensorRingIJ:=RYI/IY ** RZJ/JZ;
-    Projvars:=apply(# gens ring I,i->newy_i * newz_i);
+    use TensorRingIJ;
+    Projvars:=apply(#(gens ring I),i->newy_i * newz_i);
     hadMap:=map(TensorRingIJ,ring I, Projvars);
     ker hadMap
     )
@@ -117,7 +120,7 @@ hadProdListsOfPoints(List,List) :=(X,Y)->(
      convert:= obj -> if not instance(obj, Point) then point(obj) else obj;
      newX:=apply(X,convert);
      newY:=apply(Y,convert); 
-     toList set flatten apply(newX,a->apply(newY,b->a*b))
+     toList(set(flatten apply(newX,a->apply(newY,b->a*b)))-set({point flatten{apply(#first newX,i->0)}}))
      )
 
 
@@ -205,6 +208,7 @@ minkowskiSumOfVariety(Ideal, Ideal):= (I,J) -> (
     IY:=sub(I,apply(varI,gens RYI,(a,b)->a=>b));
     JZ:=sub(J,apply(varJ,gens RZJ,(a,b)->a=>b));
     TensorRingIJ:=RYI/IY ** RZJ/JZ;
+    use TensorRingIJ;
     Minkvars:=apply(#gens ring I,i-> newy_i + newz_i);
     MinkMap:=map(TensorRingIJ,ring I,Minkvars);
     ker MinkMap
@@ -269,11 +273,35 @@ minkMult(List):=(L)->(
 -------------minkowskiSum--ends-------
 
 -----------------------new results-------------
+idealOfProjectivePoints=method()
+idealOfProjectivePoints(List,Ring):=(L,R)->(
+    if not uniform L then 
+     (return "error: the elements of the list are not all of the same class");
+    if instance(first L,Point)==true then(
+    MP:=transpose pointsToMatrix L; 
+    ideal projectivePointsByIntersection(MP,R)
+    )
+    else
+    if instance(first L,Array)==true then(
+    newL:=makeListOfPoints(L);
+    MA:=transpose pointsToMatrix newL;
+    ideal projectivePointsByIntersection(MA,R)
+    )
+    else
+    if instance(first L,List)==true then(
+    ML:=transpose matrix L;
+    ideal projectivePointsByIntersection(ML,R)
+    )
+    else return ("error: check the inputs")
+    )
+
+
+
 
 beginDocumentation()
 
      doc ///
-      Key 
+       Key 
         Hadamard
      Headline
       A package for Hadamard product and Minkowski sums of varieties
@@ -296,8 +324,7 @@ beginDocumentation()
      
 end
 
-installPackage "Hadamard"
-viewHelp Hadamard
+
 
 
 
