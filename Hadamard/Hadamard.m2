@@ -9,37 +9,37 @@ newPackage(
 	    HomePage => "http://calvino.polito.it/~imanbj"
 	    }
 	}, -- TODO
-    Headline => "A package for Hadamard products and Minkowski sums of varieties",
+    Headline => "A package for the Hadamard products of varieties",
     AuxiliaryFiles => false,
     DebuggingMode => true,
     Reload => true,
     PackageExports => {"Points"}
-    
     )
 export {
     -- types
-    
+    "Point",
     -- methods
     "point",
-    "makeListOfPoints",
+    --"makeListOfPoints",
     "hadamardProduct",
-    "hadamardPowers",
-    "hadamardMult",
-    "pointsToMatrix",
-    "minkSum",
-    "minkSumPowers",
-    "minkMult",
-    "idealOfProjectivePoints",
-    "inversion"
+    "hadamardPower",
+    --"pointsToMatrix",
+    --"minkSum",
+    --"minkSumPowers",
+    --"minkMult",
+    "idealOfProjectivePoints"
+    --"inversion"
     }
-
 
 --defining a new type of objects: points
 
 Point = new Type of BasicList
-point=method()
-point(VisibleList):=(P)->(new Point from P)
 
+point=method()
+point(VisibleList):=(P)->(
+    if all(P, i->i==0) then return "error: all entries are zero" else
+    if #delete(null, P) =!= #P then return "error: nuul entries are not allowed"
+    else new Point from P)
 
 makeListOfPoints=method()
 makeListOfPoints(VisibleList):=(L)->(
@@ -47,51 +47,29 @@ makeListOfPoints(VisibleList):=(L)->(
 	     )
 
 Point * Point:=(p,q)->(
-    apply(p,q,times)
+    if #p =!= #q then error("the points should be in a same projective space") else
+    pp:=apply(p,q,times);
+    if all(pp, i->i==0) then error("this operation is not well-defined in projective space")
+    else return pp
     )
 
-Point + Point:=(p,q)->(
-    apply(p,q,plus)
+Point == Point := (p,q)->(
+    rank pointsToMatrix({p,q}) == 1
     )
-
-- Point:=(q)->(
-    point apply(toList q,minus)
-    )
-
-Point - Point :=(p,q)->(
-    p+(-q)
-    )
-
-Point / Thing:=(q,t)->(
-    point apply(toList q,i->i/t)
-    )
-
-Thing * Point:=(t,p)->(
-    Np:=toList p;
-     point( t * Np)
-     )
-
-Point * Thing :=(p,t)->(
-    Np:=toList p;
-     point(flatten apply(Np,i->apply({t},{i},times)))
-     )
 
 ---Hadamard product of two points---
-
-
 hadProdPoints = method()	 
 hadProdPoints(Point,Point):=(p,q)->(
-    apply(p,q,times)
+     p * q
     )
 
 hadProdPoints(List,List):=(p,q)->(
-    apply(point p,point q,times)
+ point p * point q
     )
 
 hadProdPoints(Array,Array):=(p,q)->(
-    apply(point p,point q,times)
+   point p * point q
     )
-
 
 -- Hadamrd product of two varieties
 hadProdOfVariety = method()
@@ -112,54 +90,36 @@ hadProdOfVariety (Ideal, Ideal):= (I,J) -> (
     hadMap:=map(TensorRingIJ,ring I, Projvars);
     ker hadMap
     )
- 
+
 
 -------Hadmard product of two subsets of points on two varieties---------
 hadProdListsOfPoints = method()
 hadProdListsOfPoints(List,List) :=(X,Y)->(
      convert:= obj -> if not instance(obj, Point) then point(obj) else obj;
      newX:=apply(X,convert);
-     newY:=apply(Y,convert); 
-     toList(set(flatten apply(newX,a->apply(newY,b->a*b)))-set({point flatten{apply(#first newX,i->0)}}))
+     newY:=apply(Y,convert);
+     return delete(null, for I in toList(set(newX) ** set(newY)) list (
+	 try(I_0 * I_1) then (I_0 * I_1) else null
+	 ))
      )
 
-
-
----Hadamard product of matrices---
 
 pointsToMatrix=method()
 pointsToMatrix(List):= (PTM) ->( matrix apply(PTM, toList))
 
-hadamardProductMatrix=method()
-hadamardProductMatrix(Matrix,Matrix):=(M,N)->(
-    if (numrows M,numcols M) != (numrows N,numcols N) then (
-	return "error: two matrices should be of the same sizes");
-    rowM:=makeListOfPoints entries M;
-    rowN:=makeListOfPoints entries N;
-    pointsToMatrix(apply(rowM,rowN,(i,j)->hadProdPoints(i,j))) 
-    )
-
-
-
 ---Hadamard powers of varieties------------
 
-hadamardPowers = method()
-hadamardPowers(Ideal,ZZ):=(I,r)->(
+hadamardPower = method()
+hadamardPower(Ideal,ZZ):=(I,r)->(
+    if r<1 then return error("the second argument should be positve integre >=1 ");
    NewI := I;
    for i from 1 to r-1 do NewI = hadProdOfVariety(NewI,I);
    return NewI)
 
-
----Hadamard powers of Matrix------------
-hadamardPowers(Matrix,ZZ):=(M,r)->(
-   NewM := M;
-   for i from 1 to r-1 do NewM = hadamardProductMatrix(NewM,M);
-   return NewM)
-
-
 ---Hadamard powers of sets of points ------------
 
-hadamardPowers(List,ZZ):=(L,r)->(
+hadamardPower(List,ZZ):=(L,r)->(
+    if r<1 then return error("the second argument should be a positve integre >=1");
    NewL := L;
    for i from 1 to r-1 do NewL = hadProdListsOfPoints(NewL,L);
    return toList set NewL)
@@ -170,493 +130,305 @@ hadamardPowers(List,ZZ):=(L,r)->(
 hadamardMult=method()
 hadamardMult(List):=(L)->(
     if not uniform L then
-     (return "error: the elements of the list are not all of the same class");
+     (return "error: entries should be in the same class");
     if instance(first L,Ideal)==true then fold(hadProdOfVariety,L)
     else
     if instance(first L,List)==true or instance(first L,Point)==true then fold(hadProdPoints,L)
-    else
-    if instance(first L,Matrix)==true then fold(hadamardProductMatrix,L)
     else return ("error: check the inputs")
     )
-
 
 -------general product------
 
 hadamardProduct=method()
 hadamardProduct(Ideal,Ideal):=(I,J)->(hadProdOfVariety(I,J))
 hadamardProduct(List,List):=(X,Y)->(hadProdListsOfPoints(X,Y))
-hadamardProduct(Matrix,Matrix):=(M,N)->(hadamardProductMatrix(M,N))
-
-
+hadamardProduct(List):=(L)->(hadamardMult(L));
 
 
 ------------------Hadamard product ends ------------------
 
 
----------- Minkowski sum of two varieties starts---------
 
-minkowskiSumOfVariety = method()
-minkowskiSumOfVariety(Ideal, Ideal):= (I,J) -> (
-    newy := symbol newy;
-    newz := symbol newz;
-    varI:= gens ring I;
-    varJ:= gens ring J;
-    CRI:=coefficientRing ring I;
-    CRJ:=coefficientRing ring J;
-    RYI:=CRI[newy_0.. newy_(# varI -1)];
-    RZJ:=CRI[newz_0..newz_(# varJ -1)];
-    IY:=sub(I,apply(varI,gens RYI,(a,b)->a=>b));
-    JZ:=sub(J,apply(varJ,gens RZJ,(a,b)->a=>b));
-    TensorRingIJ:=RYI/IY ** RZJ/JZ;
-    use TensorRingIJ;
-    Minkvars:=apply(#gens ring I,i-> newy_i + newz_i);
-    MinkMap:=map(TensorRingIJ,ring I,Minkvars);
-    ker MinkMap
-    )
-
-
-minkSumPoints = method()     
-minkSumPoints(Point,Point):=(p,q)->(p + q)
-minkSumPoints(List,List):=(p,q)->(point p + point q)
-minkSumPoints(Array,Array):=(p,q)->(point p + point q)
-
-
-minkSumListsOfPoints = method();
-minkSumListsOfPoints(List,List) :=(X,Y)->(
-     convert:= obj -> if not instance(obj, Point) then point(obj) else obj;
-     newX:=apply(X,convert);
-     newY:=apply(Y,convert); 
-     toList set flatten apply(newX,a->apply(newY,b->a+b))
-     )
-
-
----Mink powers of varieties------------
-minkSumPowers = method()
-minkSumPowers(Ideal,ZZ):=(I,r)->(
-   NewI := I; 
-   for i from 1 to r-1 do NewI = minkowskiSumOfVariety(NewI,I);
-   return NewI
-   )
-
-
----Hadamard powers of list of points ------------
-
-minkSumPowers(List,ZZ):=(L,r)->(
-   NewL := L;
-   for i from 1 to r-1 do NewL = minkSumListsOfPoints(NewL,L);
-   return toList set NewL
-   )
-
----Hadamard powers of a matrix ------------
-
-minkSumPowers(Matrix,ZZ):=(M,r)->(
-   NewM := M;
-   for i from 1 to r-1 do NewM = M + NewM;
-   return NewM
-   )
-
-
-minkSum=method()
-minkSum(Ideal,Ideal):=(I,J)->(minkowskiSumOfVariety(I,J))
-minkSum(List,List):=(X,Y)->(minkSumListsOfPoints(X,Y))
-minkSum(Matrix,Matrix):=(M,N)->(M+N)
-
-
------------------%%%--------------------------------%%%---------------
-
-minkMult=method()
-minkMult(List):=(L)->(
-    if not uniform L then
-     (return "error: the elements of the list are not all of the same class");
-    if instance(first L,Ideal)==true then fold(minkowskiSumOfVariety,L)
-    else
-    if instance(first L,List)==true or instance(first L,Point)==true or instance(first L,Array)==true
-    then fold(minkSumPoints,L)
-    else
-    if instance(first L,Matrix)==true then sum L
-    else return ("error: check the inputs")
-    )
-
--------------minkowskiSum--ends-------
 
 -----------------------new results-------------
 idealOfProjectivePoints=method()
 idealOfProjectivePoints(List,Ring):=(L,R)->(
     if not uniform L then 
-     (return "error: the elements of the list are not all of the same class");
-    if instance(first L,Point)==true then(
+     (return "error: entries should be in the same class");
     MP:=transpose pointsToMatrix L; 
-    ideal projectivePointsByIntersection(MP,R)
-    )
-    else
-    if instance(first L,Array)==true then(
-    newL:=makeListOfPoints(L);
-    MA:=transpose pointsToMatrix newL;
-    ideal projectivePointsByIntersection(MA,R)
-    )
-    else
-    if instance(first L,List)==true then(
-    ML:=transpose matrix L;
-    ideal projectivePointsByIntersection(ML,R)
-    )
-    else return ("error: check the inputs")
+    return ideal projectivePointsByIntersection(MP,R)
     )
 
+--------Terracini lemma------
 
------------------------%%inversion%%---------------
-inversion = method()
-inversion(Point):=(P)->(
-    newP := toList P;
-    if #delete(0,newP) =!= # newP then 
-      (return "error: there exists at least one zeor in the coordinate");
-      point apply(newP,i->1/i)
-      )
-inversion(List):=(P)->(
-    if #delete(0,P) =!= # P then 
-      (return "error: there exists at least one zeor in the coordinate");
-      apply(P,i->1/i)
-      )
-inversion(Array):=(P)->(
-    if #delete(0,P) =!= # P then 
-      (return "error: there exists at least one zeor in the coordinate");
-      new Array from apply(P,i->1/i)
-      )
-inversion(RingElement):=(L)->(
-    newC := flatten entries(coefficients L)#1;
-    if #delete(0,newC) =!= # newC then 
-      (return "error: there exists at least one zeor in the coordinate");
-      sub(sum apply(gens ring L, apply(newC,i->1/i),(a,b)->a*b),ring L)
-      )
+
+
 
 
 
 -----------------------------------------------
 beginDocumentation()
 
-     doc ///
-       Key 
-        Hadamard
+doc ///
+     Key
+       Hadamard
      Headline
-      A package for Hadamard products and Minkowski sums of varieties
-     Description
-       Text
-        This package computes the Hadamard products and Minkowski sums of varieties.
-     ///
-
+       a package to study Hadamard products of varieties.
+///
 
 doc ///
     Key
-     point
+    	Point
     Headline
-        consructs points from a list or an array.
+    	a new type for points in projective space
+    Description
+    	Text
+	   A point in projective space is represented as an object in the class @TO Point@. An element of this class is a @TO BasicList@.
+///
+
+doc ///
+    Key
+       (symbol *, Point, Point)
+    Headline
+    	entrywise product of two projective points
     Usage
-        point(List)
-        point(Array)
+    	p * q
     Inputs
-        p:List
-        p:Array 
+    	p:Point
+	q:Point
+    Outputs
+    	:Point
+    Description
+    	Example
+	    p = point {1,2,3};
+	    q = point {-1,2,5};
+	    p * q
+	Text
+	    Note that this operation is not always well-defined in projective space, 
+	    e.g., the Hadamard product of the points $[1:0]$ and $[0:1]$ is not well-defined
+///
+
+doc ///
+    Key
+    	(symbol ==, Point, Point)
+    Headline
+    	check equality of two projective points
+    Usage
+    	p == q
+    Inputs
+    	p:Point
+	q:Point
+    Outputs
+    	:Boolean
+    Description
+    	Example
+	    p = point {1,1};
+	    q = point {2,2};
+	    p == q
+///
+
+doc ///
+    Key
+    	point
+        (point, VisibleList)
+    Headline
+        consructs a projective point from the list (or array) of coordinates.
+    Usage
+        point(L)
+    Inputs
+        L:List 
+	   or @TO2{Array, "array"}@
+	   or @TO2{VisibleList, "visible list"}@
     Outputs
         :Point
     Description
-        Text
-          This function makes a point from a list or an array
         Example
-            p = {1,2,3} 
-            point(p)
-            q = [1,2,3]
-            point(q)
-///
-
-
-doc ///
-    Key
-     makeListOfPoints
-    Headline
-        consructs a list of points from a list of lists or arraies.
-    Usage
-        makeListOfPoints(List)
-    Inputs
-        L:List
-    Outputs
-         :List
-    Description
-        Text
-          consructs a list of points from a list of lists or arraies.
-        Example
-            L = {{1,2,3},{4,5,6},{7,8,9}}
-            makeListOfPoints(L)
-            L = {[1,2,3],[4,5,6],[7,8,9]} 
-            makeListOfPoints(L)
+            point {1,2,3}
+            point [1,4,6]
 ///
 
 doc ///
     Key
-     hadamardProduct
+    	hadamardProduct
     Headline
-        Hadamard products of varieties, subsets of points and matrices.    
+        computes the Hadamard product of varieties
+///
+
+doc ///
+    Key
+	(hadamardProduct, Ideal, Ideal)
+    Headline
+         Hadamard product of two homogeneous ideals
     Usage
-        hadamardProduct(Ideal,Ideal)
-        hadamardProduct(List,List)
-        hadamardProduct(Matrix,Matrix)
+        hadamardProduct(I,J)
     Inputs
         I:Ideal
-        J:Ideal
-        K:List
-        L:List
-        M:Matrix
-        N:Matrix
+	    (homogeneous)
+	J:Ideal
+	    (homogeneous)
     Outputs
          :Ideal
-         :List
-         :Matrix
     Description
         Text
-          Hadamard products of varieties, subsets of points and matrices.
-        Example
-            S = QQ[x,y,z,w]
-            I = ideal(random(1,S),random(1,S))
-            J = ideal(random(1,S),random(1,S))
-            hadamardProduct(I,J)
-            K = {{1,2,3,4},{1,1,3,4},{2,5,6,0},{1,2,0,0}}
-            L = {{1,2,3,4},{1,1,3,4},{1,1,1,1}}
-            hadamardProduct(K,L)
-            M = matrix{{1,2,3,4},{1,1,3,4},{2,5,6,0},{1,2,0,0}}
-            N = matrix{{1,2,3,4},{1,1,3,4},{1,1,1,1},{1,2,3,4}}
-            hadamardProduct(M,N)
+            Given two projective varieties $X$ and $Y$, their Hadamard product is defined as the
+	    Zariski closure of the set of (well-defined) entrywise products of pairs of points in the cartesian 
+	    product $X \times Y$. This can also be regarded as the image of the Segre product of $X \times Y$
+	    via the linear projection on the $z_{ii}$ coordinates. The latter is the way the function is implemented.
+	
+	    Consider for example the entrywise product of two points.
+	Example
+	    S = QQ[x,y,z,t];
+	    p = point {1,1,1,2};
+	    q = point {1,-1,-1,-1};
+	    idealOfProjectivePoints({p*q},S)
+	Text
+	    This can be computed also from their defining ideals as explained.
+	Example
+	    IP = ideal(x-y,x-z,2*x-t)
+	    IQ = ideal(x+y,x+z,x+t)
+            hadamardProduct(IP,IQ)
+	Text
+	    We can also consider Hadamard product of higher dimensional varieties. 
+	    For example, the Hadamard product of two lines.
+	Example    
+            I = ideal(random(1,S),random(1,S));
+            J = ideal(random(1,S),random(1,S));
+	    hadamardProduct(I,J)
 ///
 
 doc ///
     Key
-     hadamardPowers
+       (hadamardProduct, List)
     Headline
-        computes the r-th Hadmard powers of varieties, subsets of points, and matrices.
+        Hadamard product of a list of homogeneous ideals, or points
     Usage
-        hadamardPowers(Ideal,ZZ)
-        hadamardPowers(List,ZZ)
-        hadamardPowers(Matrix,ZZ)
+    	hadamardProduct(L)
     Inputs
+    	L:List
+            of @TO2{Ideal, "(homogeneous) ideals"}@ or @TO2{Point, "(projective) points"}@
+    Outputs
+    	:Ideal
+	:Point
+    Description
+    	Text
+	    The Hadamard product of a list of ideals or points constructed by using iteratively the binary function
+	    @TO (hadamardProduct, Ideal, Ideal)@, or  @TO (symbol *, Point, Point)@.
+	Example
+	    S = QQ[x,y,z,t];
+	    I = ideal(random(1,S),random(1,S));
+            J = ideal(random(1,S),random(1,S));
+	    L = {I,J};
+	    hadamardProduct(L)
+	    P = {point{1,2,3},point{-1,1,1},point{1,1/2,-1/3}};
+	    hadamardProduct(P)
+///
+
+doc ///
+    Key
+    	(hadamardProduct, List, List)
+    Headline
+        Hadamard product of two sets of points    
+    Usage
+    	hadamardProduct(L,M)
+    Inputs
+    	L:List
+	    of @TO Point@
+	M:List
+	    of @TO Point@
+    Outputs
+    	:List
+	    of @TO Point@
+    Description
+    	Text
+	    Given two sets of points $X$ and $Y$ returns the list of (well-defined) entrywise
+	    multiplication of pairs of points in the cartesian product $X \times Y$.
+	Example
+	    L = {point{0,1}, point{1,2}};
+	    M = {point{1,0}, point{2,2}};
+	    hadamardProduct(L,M)
+///
+
+doc ///
+    Key
+      hadamardPower
+    Headline
+        computes the Hadamard powers of varieties
+///
+
+
+doc ///
+    Key
+     (hadamardPower,Ideal, ZZ)
+    Headline
+        computes the $r$-th Hadmard powers of varieties
+    Usage
+        hadamardPower(I,r)
+    Inputs
+        I:Ideal
+	   of @TO2{Ideal, "(homogeneous) ideals"}@ 
         r:ZZ
-        I:Ideal
-        L:List
-        M:Matrix
+	  a positive integer $>=1$
     Outputs
          :Ideal
-         :List
-         :Matrix
     Description
         Text
-         computes the r-th Hadmard powers of varieties, subsets of points, or matrices.
+         Give a homogeneous ideal $I$, the $r$-th Hadamard power of $I$ is $r$-times Hadamard product of I to itself; $( I x\cdots x I)_{r-times}$
         Example
             S=QQ[x,y,z,w]
             I=ideal(random(1,S),random(1,S),random(1,S))
-            hadamardPowers(I,3)
-            M=random(ZZ^4,ZZ^4)
-            hadamardPowers(M,2)
-            L={point{1,1,1},point{1,0,1},point{1,2,4}}
-            hadamardPowers(L,3)
+            hadamardPower(I,3)
 ///
 
 doc ///
     Key
-     hadamardMult
+     (hadamardPower,List,ZZ)
     Headline
-        it computes pairwise Hadmard products of the elements in a list of ideals, matrices, or points.
+        computes the $r$-th Hadmard powers of a set points
     Usage
-        hadamardMult(List)
+        hadamardPower(L,r)
     Inputs
-        L:List
+        L:List 
+	  of @TO2{Point, "(projective) points"}@
+	r:ZZ
+	  a positive integer $>=1$
     Outputs
-         :Ideal
-         :Point
-         :Matrix
-    Description
-        Text
-         it computes pairwise Hadmard products of the elements in a list of ideals, matrices, or points.
-        Example
-            S=QQ[x,y,z,w]
-            L={ideal(random(1,S),random(1,S)),ideal(random(1,S),random(1,S)),ideal(random(1,S),random(1,S),random(1,S))}
-            hadamardMult(L)
-            L={point{0,4,5,6},point{1,2,3,4},point{1,2,0,1}}
-            hadamardMult(L)
-            L={random(ZZ^3,ZZ^4),random(ZZ^3,ZZ^4),random(ZZ^3,ZZ^4)}
-            hadamardMult(L)
-///
-
-doc ///
-    Key
-     pointsToMatrix
-    Headline
-        consructs a matrix from a list of points.
-    Usage
-        pointsToMatrix(List)
-    Inputs
-        L:List
-    Outputs
-         :Matrix
-    Description
-        Text
-          consructs a matrix from a list of points.
-        Example
-            L = {point{1,2,3},point{4,5,6},point{7,8,9}}
-            pointsToMatrix(L)
-///
-
-doc ///
-    Key
-     minkSum
-    Headline
-        Minkowski sums of varieties, subsets of points and matrices.    
-    Usage
-        minkSum(Ideal,Ideal)
-        minkSum(List,List)
-        minkSum(Matrix,Matrix)
-    Inputs
-        I:Ideal
-        J:Ideal
-        K:List
-        L:List
-        M:Matrix
-        N:Matrix
-    Outputs
-         :Ideal
          :List
-         :Matrix
     Description
         Text
-          Minkowski sums of varieties, subsets of points and matrices.
+         Give a set of points $L$, the $r$-th Hadamard power of $L$ is $r$-times Hadamard product of L to itself; $( L x\cdots x L)_{r-times}$
         Example
-            S = QQ[x,y,z,w]
-            I = ideal(random(1,S),random(1,S),random(1,S))
-            J = ideal(random(1,S),random(1,S),random(1,S))
-            minkSum(I,J)
-            K = {point{1,2,3,4},point{1,1,3,4},point{2,5,6,0},point{1,2,0,0}}
-            L = {point{1,2,3,4},point{1,1,3,4},point{1,1,1,1}}
-            minkSum(K,L)
-            M = matrix{{1,2,3,4},{1,1,3,4},{2,5,6,0},{1,2,0,0}}
-            N = matrix{{1,2,3,4},{1,1,3,4},{1,1,1,1},{1,2,3,4}}
-            minkSum(M,N)
+            L={point{1,1,1/2},point{1,0,1},point{1,2,4}}
+            hadamardPower(L,3)
 ///
-
-doc ///
-    Key
-     minkSumPowers
-    Headline
-        computes the r-th Minkowski sums of varieties, subsets of points, and matrices.
-    Usage
-        minkSumPowers(Ideal,ZZ)
-        minkSumPowers(List,ZZ)
-        minkSumPowers(Matrix,ZZ)
-    Inputs
-        r:ZZ
-        I:Ideal
-        L:List
-        M:Matrix
-    Outputs
-         :Ideal
-         :List
-         :Matrix
-    Description
-        Text
-         computes the r-th Minkowski sums of varieties, subsets of points, or matrices.
-        Example
-            S=QQ[x,y,z,w]
-            I=ideal(random(1,S),random(1,S),random(1,S))
-            minkSumPowers(I,3)
-            M=random(ZZ^4,ZZ^4)
-            minkSumPowers(M,2)
-            L={point{1,1,1},point{1,0,1},point{1,2,4}}
-            minkSumPowers(L,3)
-///
-
-doc ///
-    Key
-     minkMult
-    Headline
-        it computes pairwise Minkowski sums of the elements in a list of ideals, matrices, or points.
-    Usage
-        minkMult(List)
-    Inputs
-        L:List
-    Outputs
-         :Ideal
-         :Point
-         :Matrix
-    Description
-        Text
-         it computes pairwise Minkowski sums of the elements in a list of ideals, matrices, or points.
-        Example
-            S = QQ[x,y,z]
-            I = ideal(x-y,x-z)
-            L = {I,I}
-            minkMult(L)
-            L = {point{0,4,5,6},point{1,2,3,4},point{1,2,0,1}}
-            minkMult(L)
-            L = {random(ZZ^3,ZZ^4),random(ZZ^3,ZZ^4),random(ZZ^3,ZZ^4)}
-            minkMult(L)
-///
-
 
 doc ///
     Key
      idealOfProjectivePoints
+     (idealOfProjectivePoints,List,Ring)
     Headline
-        ideal associated to a list of points, lists, or arraies.
+        computes the ideal of set of points
     Usage
-        idealOfProjectivePoints(List)
+        idealOfProjectivePoints(L,S)
     Inputs
         L:List
+	   of @TO2{Point, "(projective) points"}@
+	S:Ring
     Outputs
         I:Ideal
     Description
         Text
-          ideal associated to a list of points, lists, or arraies.
+          Given a set points $X$, it returns the defining ideal of $I(X)$
         Example
             S = QQ[x,y,z] 
-            L = {point{1,1,0},point{0,1,1},point{1,2,-1}}
-            I = idealOfProjectivePoints(L,S)
-            L = {{1,1,0},{0,1,1},{1,2,-1}}
-            I = idealOfProjectivePoints(L,S)
-            L = {[1,1,0],[0,1,1],[1,2,-1]}
-            I = idealOfProjectivePoints(L,S)
-            I2 = hadamardPowers(I,2)
-            L2 = hadamardPowers(L,2)
-            I2 == idealOfProjectivePoints(L2,S)
+            X = {point{1,1,0},point{0,1,1},point{1,2,-1}}
+            I = idealOfProjectivePoints(X,S)
+            I2 = hadamardPower(I,2)
+            X2 = hadamardPower(X,2)
+            I2 == idealOfProjectivePoints(X2,S)
 ///
 
-doc ///
-    Key
-     inversion
-    Headline
-        coordinate wise inversion of a point, list, or array.
-    Usage
-        inversion(Point)
-        inversion(List)
-        inversion(Array)
-    Inputs
-        P:Point
-        P:List
-        P:Array
-        L:RingElement
-    Outputs
-         :Point
-         :List
-         :Array
-         :RingElement
-    Description
-        Text
-          ccoordinate wise inversion of a point, a list, an array, or a linear form.
-        Example
-            P = point{1,2,3}
-            inversion(P)
-            P = {1,2,3}
-            inversion(P)
-            P = [1,2,3]
-            inversion(P)
-            S = QQ[x,y,z,w]
-            L=random(1,S)
-            inversion(L)
 
-///
+
 
      TEST ///
      assert(hadamardProduct({point{1,2,3,4}},{point{1,2,3,4}}))==point{1,4,9,16})
@@ -671,13 +443,4 @@ restart
 uninstallPackage "Hadamard"
 installPackage "Hadamard"
 loadPackage "Hadamard"
-viewHelp Hadamard
-
-
-
-
-
-
-
-
-
+viewHelp "Hadamard"
