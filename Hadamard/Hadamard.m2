@@ -1,34 +1,29 @@
 newPackage(
     "Hadamard",
-    Version => "1.0",
-    Date => "September 2019",
+    Version => "0.1",
+    Date => "November 2020",
     Authors => {
 
 	{Name => "Iman Bahmani Jafarloo",
-	    Email => "iman.bahmanijafarloo@polito.it",
+	    Email => "ibahmani89@gmail.com",
 	    HomePage => "http://calvino.polito.it/~imanbj"
 	    }
 	}, -- TODO
-    Headline => "A package for the Hadamard products of varieties",
+    Headline => "A package for the Hadamard products of projective subvarieties",
     AuxiliaryFiles => false,
-    DebuggingMode => true,
-    Reload => true,
-    PackageExports => {"Points"}
+    DebuggingMode => false,
+    Reload => false,
+    PackageExports => {"Points"},
+    Keywords => {"Commutative Algebra"}
     )
 export {
     -- types
     "Point",
     -- methods
     "point",
-    --"makeListOfPoints",
     "hadamardProduct",
     "hadamardPower",
-    --"pointsToMatrix",
-    --"minkSum",
-    --"minkSumPowers",
-    --"minkMult",
     "idealOfProjectivePoints"
-    --"inversion"
     }
 
 --defining a new type of objects: points
@@ -37,19 +32,15 @@ Point = new Type of BasicList
 
 point=method()
 point(VisibleList):=(P)->(
-    if all(P, i->i==0) then return "error: all entries are zero" else
-    if #delete(null, P) =!= #P then return "error: nuul entries are not allowed"
+    if all(P, i->i==0) then error("all entries are zero") else
+    if any(P,i->i===null) then error("nuul entries are not allowed")
     else new Point from P)
 
-makeListOfPoints=method()
-makeListOfPoints(VisibleList):=(L)->(
-             apply(L,P-> point P)
-	     )
 
 Point * Point:=(p,q)->(
-    if #p =!= #q then error("the points should be in a same projective space") else
+    if #p =!= #q then error("points should be in a same projective space") else
     pp:=apply(p,q,times);
-    if all(pp, i->i==0) then error("this operation is not well-defined in projective space")
+    if all(pp, i->i==0) then error("product of points has no nonzero coordinate")
     else return pp
     )
 
@@ -111,7 +102,7 @@ pointsToMatrix(List):= (PTM) ->( matrix apply(PTM, toList))
 
 hadamardPower = method()
 hadamardPower(Ideal,ZZ):=(I,r)->(
-    if r<1 then return error("the second argument should be positve integre >=1 ");
+    if r<1 then error("the second argument should be positve integre >=1");
    NewI := I;
    for i from 1 to r-1 do NewI = hadProdOfVariety(NewI,I);
    return NewI)
@@ -119,7 +110,7 @@ hadamardPower(Ideal,ZZ):=(I,r)->(
 ---Hadamard powers of sets of points ------------
 
 hadamardPower(List,ZZ):=(L,r)->(
-    if r<1 then return error("the second argument should be a positve integre >=1");
+    if r<1 then error("the second argument should be a positve integre >=1");
    NewL := L;
    for i from 1 to r-1 do NewL = hadProdListsOfPoints(NewL,L);
    return toList set NewL)
@@ -130,11 +121,11 @@ hadamardPower(List,ZZ):=(L,r)->(
 hadamardMult=method()
 hadamardMult(List):=(L)->(
     if not uniform L then
-     (return "error: entries should be in the same class");
-    if instance(first L,Ideal)==true then fold(hadProdOfVariety,L)
+     error("entries should be in the same class");
+    if instance(first L,Ideal) then fold(hadProdOfVariety,L)
     else
-    if instance(first L,List)==true or instance(first L,Point)==true then fold(hadProdPoints,L)
-    else return ("error: check the inputs")
+    if instance(first L,List) or instance(first L,Point) then fold(hadProdPoints,L)
+    else error("input should be a list of ideals or points")
     )
 
 -------general product------
@@ -154,7 +145,7 @@ hadamardProduct(List):=(L)->(hadamardMult(L));
 idealOfProjectivePoints=method()
 idealOfProjectivePoints(List,Ring):=(L,R)->(
     if not uniform L then 
-     (return "error: entries should be in the same class");
+     error("entries should be in the same class");
     MP:=transpose pointsToMatrix L; 
     return ideal projectivePointsByIntersection(MP,R)
     )
@@ -270,7 +261,7 @@ doc ///
          :Ideal
     Description
         Text
-            Given two projective varieties $X$ and $Y$, their Hadamard product is defined as the
+            Given two projective subvarieties $X$ and $Y$, their Hadamard product is defined as the
 	    Zariski closure of the set of (well-defined) entrywise products of pairs of points in the cartesian 
 	    product $X \times Y$. This can also be regarded as the image of the Segre product of $X \times Y$
 	    via the linear projection on the $z_{ii}$ coordinates. The latter is the way the function is implemented.
@@ -319,7 +310,7 @@ doc ///
             J = ideal(random(1,S),random(1,S));
 	    L = {I,J};
 	    hadamardProduct(L)
-	    P = {point{1,2,3},point{-1,1,1},point{1,1/2,-1/3}};
+	    P = point\{{1,2,3},{-1,1,1},{1,1/2,-1/3}}
 	    hadamardProduct(P)
 ///
 
@@ -340,8 +331,8 @@ doc ///
 	    of @TO Point@
     Description
     	Text
-	    Given two sets of points $X$ and $Y$ returns the list of (well-defined) entrywise
-	    multiplication of pairs of points in the cartesian product $X \times Y$.
+	    Given two sets of points $L$ and $M$ returns the list of (well-defined) entrywise
+	    multiplication of pairs of points in the cartesian product $L\times M$.
 	Example
 	    L = {point{0,1}, point{1,2}};
 	    M = {point{1,0}, point{2,2}};
@@ -431,7 +422,7 @@ doc ///
 
 
      TEST ///
-     assert(hadamardProduct({point{1,2,3,4}},{point{1,2,3,4}}))==point{1,4,9,16})
+     assert(point{1,2,3,4} * point{1,2,3,4}==point{1,4,9,16})
  
      -- may have as many TEST sections as needed
      ///
@@ -442,5 +433,6 @@ end
 restart
 uninstallPackage "Hadamard"
 installPackage "Hadamard"
-loadPackage "Hadamard"
+loadPackage ("Hadamard",Reload=>true)
 viewHelp "Hadamard"
+check "Hadamard"
